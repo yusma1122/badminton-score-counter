@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Badminton Score Counter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .score-display {
+            font-size: 8rem;
+            font-weight: 900;
+            text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        .team-name {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+        
+        .winner-animation {
+            animation: pulse 2s infinite, glow 2s infinite;
+        }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 20px #fbbf24; }
+            50% { box-shadow: 0 0 40px #f59e0b; }
+        }
+        
+        .set-indicator {
+            transition: all 0.3s ease;
+        }
+        
+        .set-active {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            transform: scale(1.1);
+        }
+        
+        .game-container {
+            background: linear-gradient(135deg, #1e293b, #334155);
+            min-height: 100vh;
+        }
+        
+        .score-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+        
+        .clock-display {
+            font-family: 'Courier New', monospace;
+            font-size: 1.5rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .stopwatch-display {
+            font-family: 'Courier New', monospace;
+            font-size: 2rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body class="game-container text-white select-none">
+    <div class="container mx-auto px-4 py-6">
+        <!-- Header with Clock and Stopwatch -->
+        <div class="flex justify-between items-center mb-8">
+            <div class="text-center">
+                <h3 class="text-lg font-semibold mb-2">Current Time</h3>
+                <div id="liveClock" class="clock-display bg-gray-800 px-4 py-2 rounded-lg">
+                    --:--:--
+                </div>
+            </div>
+            
+            <h1 class="text-4xl font-bold text-center text-yellow-400">
+                🏸 Badminton Score Counter
+            </h1>
+            
+            <div class="text-center">
+                <h3 class="text-lg font-semibold mb-2">Match Duration</h3>
+                <div id="stopwatch" class="stopwatch-display bg-gray-800 px-4 py-2 rounded-lg">
+                    00:00:00
+                </div>
+                <div class="flex gap-2 mt-2">
+                    <button id="startStopwatch" class="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm">Start</button>
+                    <button id="pauseStopwatch" class="bg-yellow-600 hover:bg-yellow-700 px-3 py-1 rounded text-sm">Pause</button>
+                    <button id="resetStopwatch" class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm">Reset</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Set Indicators -->
+        <div class="flex justify-center mb-8">
+            <div class="flex gap-4">
+                <div id="set1" class="set-indicator set-active px-6 py-3 rounded-lg bg-blue-600 text-white font-bold">
+                    Set 1
+                </div>
+                <div id="set2" class="set-indicator px-6 py-3 rounded-lg bg-gray-600 text-white font-bold">
+                    Set 2
+                </div>
+                <div id="set3" class="set-indicator px-6 py-3 rounded-lg bg-gray-600 text-white font-bold hidden">
+                    Set 3 (Tiebreaker)
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Score Display -->
+        <div class="grid grid-cols-2 gap-8 mb-8">
+            <!-- Team A -->
+            <div id="teamAContainer" class="text-center p-8 bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl shadow-2xl">
+                <h2 class="team-name text-blue-100 mb-4">Team A</h2>
+                <div id="scoreA" class="score-display text-white">0</div>
+                <div class="text-xl mt-4">
+                    Sets Won: <span id="setsA" class="font-bold text-yellow-300">0</span>
+                </div>
+                <button id="teamABtn" class="score-button mt-4 bg-blue-500 hover:bg-blue-400 px-6 py-3 rounded-lg font-bold transition-all duration-200">
+                    +1 Point (Left Click)
+                </button>
+            </div>
+
+            <!-- Team B -->
+            <div id="teamBContainer" class="text-center p-8 bg-gradient-to-br from-red-600 to-red-800 rounded-2xl shadow-2xl">
+                <h2 class="team-name text-red-100 mb-4">Team B</h2>
+                <div id="scoreB" class="score-display text-white">0</div>
+                <div class="text-xl mt-4">
+                    Sets Won: <span id="setsB" class="font-bold text-yellow-300">0</span>
+                </div>
+                <button id="teamBBtn" class="score-button mt-4 bg-red-500 hover:bg-red-400 px-6 py-3 rounded-lg font-bold transition-all duration-200">
+                    +1 Point (Right Click)
+                </button>
+            </div>
+        </div>
+
+        <!-- Game Status -->
+        <div class="text-center mb-6">
+            <div id="gameStatus" class="text-2xl font-bold text-yellow-400 mb-4">
+                Current Set: 1 | Click anywhere to score!
+            </div>
+            <div id="winner" class="text-4xl font-bold text-green-400 hidden">
+                🎉 GAME WINNER 🎉
+            </div>
+        </div>
+
+        <!-- Control Buttons -->
+        <div class="flex justify-center gap-4 mb-6">
+            <button id="undoBtn" class="bg-yellow-600 hover:bg-yellow-700 px-6 py-3 rounded-lg font-bold transition-all duration-200">
+                Undo Last Point (Middle Click / U)
+            </button>
+            <button id="resetBtn" class="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-bold transition-all duration-200">
+                Reset Game
+            </button>
+        </div>
+
+        <!-- Instructions -->
+        <div class="bg-gray-800 p-6 rounded-lg">
+            <h3 class="text-xl font-bold mb-4 text-center">🖱️ Controls</h3>
+            <div class="grid grid-cols-2 gap-4 text-center mb-4">
+                <div class="bg-blue-700 p-4 rounded-lg">
+                    <div class="text-2xl mb-2">👆</div>
+                    <div class="font-bold">Left Click</div>
+                    <div class="text-sm">+1 Point Team A</div>
+                </div>
+                <div class="bg-red-700 p-4 rounded-lg">
+                    <div class="text-2xl mb-2">👆</div>
+                    <div class="font-bold">Right Click</div>
+                    <div class="text-sm">+1 Point Team B</div>
+                </div>
+            </div>
+            <div class="grid grid-cols-4 gap-2 text-center text-sm">
+                <div class="bg-yellow-700 p-3 rounded">
+                    <div class="font-bold">Middle Click</div>
+                    <div>Undo Point</div>
+                </div>
+                <div class="bg-yellow-700 p-3 rounded">
+                    <div class="font-bold">U Key</div>
+                    <div>Undo Point</div>
+                </div>
+                <div class="bg-green-700 p-3 rounded">
+                    <div class="font-bold">R Key</div>
+                    <div>Reset Game</div>
+                </div>
+                <div class="bg-purple-700 p-3 rounded">
+                    <div class="font-bold">Spacebar</div>
+                    <div>Start/Pause Timer</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class BadmintonScorer {
+            constructor() {
+                this.scoreA = 0;
+                this.scoreB = 0;
+                this.setsA = 0;
+                this.setsB = 0;
+                this.currentSet = 1;
+                this.maxSets = 2;
+                this.maxScore = 24;
+                this.gameFinished = false;
+                this.lastScoredTeam = null;
+                this.history = [];
+                
+                // Stopwatch
+                this.stopwatchRunning = false;
+                this.stopwatchTime = 0;
+                this.stopwatchInterval = null;
+                
+                this.initializeElements();
+                this.initializeEventListeners();
+                this.initializeClock();
+                this.initializeAudio();
+                this.loadGameState();
+                this.updateDisplay();
+            }
+
+            initializeElements() {
+                this.elements = {
+                    scoreA: document.getElementById('scoreA'),
+                    scoreB: document.getElementById('scoreB'),
+                    setsA: document.getElementById('setsA'),
+                    setsB: document.getElementById('setsB'),
+                    teamAContainer: document.getElementById('teamAContainer'),
+                    teamBContainer: document.getElementById('teamBContainer'),
+                    gameStatus: document.getElementById('gameStatus'),
+                    winner: document.getElementById('winner'),
+                    set1: document.getElementById('set1'),
+                    set2: document.getElementById('set2'),
+                    set3: document.getElementById('set3'),
+                    liveClock: document.getElementById('liveClock'),
+                    stopwatch: document.getElementById('stopwatch'),
+                    teamABtn: document.getElementById('teamABtn'),
+                    teamBBtn: document.getElementById('teamBBtn'),
+                    undoBtn: document.getElementById('undoBtn'),
+                    resetBtn: document.getElementById('resetBtn'),
+                    startStopwatch: document.getElementById('startStopwatch'),
+                    pauseStopwatch: document.getElementById('pauseStopwatch'),
+                    resetStopwatch: document.getElementById('resetStopwatch')
+                };
+            }
+
+            initializeEventListeners() {
+                // Disable right-click context menu
+                document.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                });
+
+                // Mouse controls
+                document.addEventListener('click', (e) => {
+                    if (!this.gameFinished && e.button === 0) { // Left click only
+                        this.scoreTeam('A');
+                    }
+                });
+
+                document.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    if (!this.gameFinished) {
+                        this.scoreTeam('B');
+                    }
+                });
+
+                // Middle mouse button for undo
+                document.addEventListener('mousedown', (e) => {
+                    if (e.button === 1) { // Middle mouse button
+                        e.preventDefault();
+                        this.undoLastScore();
+                    }
+                });
+
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'u' || e.key === 'U' || e.key === 'Backspace') {
+                        e.preventDefault();
+                        this.undoLastScore();
+                    }
+                    if (e.key === 'r' || e.key === 'R') {
+                        e.preventDefault();
+                        this.resetGame();
+                    }
+                    if (e.key === ' ') { // Spacebar for stopwatch
+                        e.preventDefault();
+                        if (this.stopwatchRunning) {
+                            this.pauseStopwatch();
+                        } else {
+                            this.startStopwatch();
+                        }
+                    }
+                });
+
+                // Button controls
+                this.elements.teamABtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (!this.gameFinished) {
+                        this.scoreTeam('A');
+                    }
+                });
+
+                this.elements.teamBBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (!this.gameFinished) {
+                        this.scoreTeam('B');
+                    }
+                });
+
+                this.elements.undoBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.undoLastScore();
+                });
+
+                this.elements.resetBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.resetGame();
+                });
+
+                // Stopwatch controls
+                this.elements.startStopwatch.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.startStopwatch();
+                });
+
+                this.elements.pauseStopwatch.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.pauseStopwatch();
+                });
+
+                this.elements.resetStopwatch.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.resetStopwatchTimer();
+                });
+            }
+
+            initializeClock() {
+                this.updateClock();
+                setInterval(() => this.updateClock(), 1000);
+            }
+
+            initializeAudio() {
+                // Create audio context for sound effects
+                this.audioContext = null;
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    console.log('Web Audio API not supported');
+                }
+            }
+
+            playSound(frequency, duration = 200, type = 'sine') {
+                if (!this.audioContext) return;
+                
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+                oscillator.type = type;
+                
+                gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration / 1000);
+                
+                oscillator.start(this.audioContext.currentTime);
+                oscillator.stop(this.audioContext.currentTime + duration / 1000);
+            }
+
+            updateClock() {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('en-US', { 
+                    hour12: false,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+                this.elements.liveClock.textContent = timeString;
+            }
+
+            startStopwatch() {
+                if (!this.stopwatchRunning) {
+                    this.stopwatchRunning = true;
+                    this.stopwatchInterval = setInterval(() => {
+                        this.stopwatchTime++;
+                        this.updateStopwatchDisplay();
+                    }, 1000);
+                }
+            }
+
+            pauseStopwatch() {
+                this.stopwatchRunning = false;
+                if (this.stopwatchInterval) {
+                    clearInterval(this.stopwatchInterval);
+                    this.stopwatchInterval = null;
+                }
+            }
+
+            resetStopwatchTimer() {
+                this.pauseStopwatch();
+                this.stopwatchTime = 0;
+                this.updateStopwatchDisplay();
+            }
+
+            updateStopwatchDisplay() {
+                const hours = Math.floor(this.stopwatchTime / 3600);
+                const minutes = Math.floor((this.stopwatchTime % 3600) / 60);
+                const seconds = this.stopwatchTime % 60;
+                
+                const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                this.elements.stopwatch.textContent = timeString;
+            }
+
+            scoreTeam(team) {
+                if (this.gameFinished) return;
+
+                // Save state for undo
+                this.history.push({
+                    scoreA: this.scoreA,
+                    scoreB: this.scoreB,
+                    setsA: this.setsA,
+                    setsB: this.setsB,
+                    currentSet: this.currentSet,
+                    lastScoredTeam: this.lastScoredTeam
+                });
+
+                if (team === 'A') {
+                    this.scoreA++;
+                    this.lastScoredTeam = 'A';
+                    this.playSound(523.25, 200); // C5 note for Team A
+                } else {
+                    this.scoreB++;
+                    this.lastScoredTeam = 'B';
+                    this.playSound(659.25, 200); // E5 note for Team B
+                }
+
+                this.checkSetWin();
+                this.updateDisplay();
+                this.saveGameState();
+            }
+
+            checkSetWin() {
+                if (this.scoreA >= this.maxScore || this.scoreB >= this.maxScore) {
+                    if (Math.abs(this.scoreA - this.scoreB) >= 2) {
+                        // Set won
+                        if (this.scoreA > this.scoreB) {
+                            this.setsA++;
+                            this.playSound(523.25, 300); // Victory sound for Team A
+                            this.playSound(659.25, 300);
+                            this.playSound(783.99, 300);
+                        } else {
+                            this.setsB++;
+                            this.playSound(659.25, 300); // Victory sound for Team B
+                            this.playSound(783.99, 300);
+                            this.playSound(987.77, 300);
+                        }
+                        
+                        this.checkGameWin();
+                        
+                        if (!this.gameFinished) {
+                            this.nextSet();
+                        }
+                    }
+                }
+                
+                // Check for tiebreaker at 24-24
+                if (this.scoreA === 24 && this.scoreB === 24 && this.currentSet === 2 && this.setsA === 1 && this.setsB === 1) {
+                    this.currentSet = 3;
+                    this.elements.set3.classList.remove('hidden');
+                    this.scoreA = 0;
+                    this.scoreB = 0;
+                }
+            }
+
+            checkGameWin() {
+                if (this.setsA === 2 || this.setsB === 2) {
+                    this.gameFinished = true;
+                    this.pauseStopwatch();
+                    
+                    // Play victory fanfare
+                    setTimeout(() => this.playSound(523.25, 150), 0);
+                    setTimeout(() => this.playSound(659.25, 150), 150);
+                    setTimeout(() => this.playSound(783.99, 150), 300);
+                    setTimeout(() => this.playSound(1046.50, 400), 450);
+                    
+                    const winner = this.setsA === 2 ? 'Team A' : 'Team B';
+                    this.elements.winner.textContent = `🎉 ${winner} WINS THE MATCH! 🎉`;
+                    this.elements.winner.classList.remove('hidden');
+                    
+                    // Add winner animation
+                    if (this.setsA === 2) {
+                        this.elements.teamAContainer.classList.add('winner-animation');
+                    } else {
+                        this.elements.teamBContainer.classList.add('winner-animation');
+                    }
+                }
+            }
+
+            nextSet() {
+                this.scoreA = 0;
+                this.scoreB = 0;
+                this.currentSet++;
+                
+                // Update set indicators
+                this.elements.set1.classList.remove('set-active');
+                this.elements.set2.classList.remove('set-active');
+                this.elements.set3.classList.remove('set-active');
+                
+                if (this.currentSet <= 3) {
+                    this.elements[`set${this.currentSet}`].classList.add('set-active');
+                }
+            }
+
+            undoLastScore() {
+                if (this.history.length === 0) return;
+                
+                const lastState = this.history.pop();
+                this.scoreA = lastState.scoreA;
+                this.scoreB = lastState.scoreB;
+                this.setsA = lastState.setsA;
+                this.setsB = lastState.setsB;
+                this.currentSet = lastState.currentSet;
+                this.lastScoredTeam = lastState.lastScoredTeam;
+                this.gameFinished = false;
+                
+                // Hide winner if it was showing
+                this.elements.winner.classList.add('hidden');
+                this.elements.teamAContainer.classList.remove('winner-animation');
+                this.elements.teamBContainer.classList.remove('winner-animation');
+                
+                // Hide set 3 if not needed
+                if (this.currentSet < 3) {
+                    this.elements.set3.classList.add('hidden');
+                }
+                
+                this.updateDisplay();
+                this.saveGameState();
+                
+                // Play undo sound
+                this.playSound(440, 100); // A4 note
+            }
+
+            resetGame() {
+                this.scoreA = 0;
+                this.scoreB = 0;
+                this.setsA = 0;
+                this.setsB = 0;
+                this.currentSet = 1;
+                this.gameFinished = false;
+                this.lastScoredTeam = null;
+                this.history = [];
+                
+                // Reset stopwatch
+                this.resetStopwatchTimer();
+                
+                // Hide winner and animations
+                this.elements.winner.classList.add('hidden');
+                this.elements.teamAContainer.classList.remove('winner-animation');
+                this.elements.teamBContainer.classList.remove('winner-animation');
+                this.elements.set3.classList.add('hidden');
+                
+                this.updateDisplay();
+                this.saveGameState();
+                
+                // Play reset sound
+                this.playSound(220, 200); // A3 note
+            }
+
+            updateDisplay() {
+                this.elements.scoreA.textContent = this.scoreA;
+                this.elements.scoreB.textContent = this.scoreB;
+                this.elements.setsA.textContent = this.setsA;
+                this.elements.setsB.textContent = this.setsB;
+                
+                // Update set indicators
+                this.elements.set1.classList.remove('set-active');
+                this.elements.set2.classList.remove('set-active');
+                this.elements.set3.classList.remove('set-active');
+                
+                if (this.currentSet <= 3) {
+                    this.elements[`set${this.currentSet}`].classList.add('set-active');
+                }
+                
+                // Update game status
+                if (this.gameFinished) {
+                    const winner = this.setsA === 2 ? 'Team A' : 'Team B';
+                    this.elements.gameStatus.textContent = `🏆 Match Complete - ${winner} Wins!`;
+                } else if (this.currentSet === 3) {
+                    this.elements.gameStatus.textContent = `Tiebreaker Set - First to ${this.maxScore} wins!`;
+                } else {
+                    this.elements.gameStatus.textContent = `Set ${this.currentSet} - Playing to ${this.maxScore} points`;
+                }
+            }
+
+            saveGameState() {
+                const gameState = {
+                    scoreA: this.scoreA,
+                    scoreB: this.scoreB,
+                    setsA: this.setsA,
+                    setsB: this.setsB,
+                    currentSet: this.currentSet,
+                    gameFinished: this.gameFinished,
+                    stopwatchTime: this.stopwatchTime,
+                    history: this.history
+                };
+                
+                // Store in memory instead of localStorage
+                this.savedState = gameState;
+            }
+
+            loadGameState() {
+                // Load from memory if available
+                if (this.savedState) {
+                    const state = this.savedState;
+                    this.scoreA = state.scoreA || 0;
+                    this.scoreB = state.scoreB || 0;
+                    this.setsA = state.setsA || 0;
+                    this.setsB = state.setsB || 0;
+                    this.currentSet = state.currentSet || 1;
+                    this.gameFinished = state.gameFinished || false;
+                    this.stopwatchTime = state.stopwatchTime || 0;
+                    this.history = state.history || [];
+                    
+                    this.updateStopwatchDisplay();
+                }
+            }
+        }
+
+        // Initialize the game when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.badmintonGame = new BadmintonScorer();
+        });
+    </script>
+</body>
+</html>
