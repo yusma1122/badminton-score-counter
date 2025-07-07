@@ -73,10 +73,108 @@
             color: #3b82f6;
             text-decoration: underline;
         }
+        /* Fullscreen button styles */
+        
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(59, 130, 246, 0.9);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(59, 130, 246, 0.5);
+            border-radius: 12px;
+            padding: 10px;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .fullscreen-btn:hover {
+            background: rgba(59, 130, 246, 1);
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+        }
+        
+        .fullscreen-btn:active {
+            transform: scale(0.95);
+        }
+        /* Fullscreen exit instruction */
+        
+        .fullscreen-exit-hint {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        
+        .fullscreen-exit-hint.show {
+            opacity: 1;
+        }
+        /* Pointer lock indicator */
+        
+        .pointer-lock-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(34, 197, 94, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .pointer-lock-indicator.show {
+            opacity: 1;
+        }
+        /* Fullscreen specific styles */
+        
+        .fullscreen-mode {
+            cursor: none;
+        }
+        
+        .fullscreen-mode .score-display {
+            font-size: 10rem;
+        }
+        
+        .fullscreen-mode .team-name {
+            font-size: 2.5rem;
+        }
     </style>
 </head>
 
 <body class="game-container text-white select-none">
+    <!-- Fullscreen Button -->
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Enter Fullscreen (F11)">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+        </svg>
+    </button>
+
+    <!-- Fullscreen Exit Hint -->
+    <div id="fullscreenExitHint" class="fullscreen-exit-hint">
+        Press <strong>ESC</strong> or <strong>F11</strong> to exit fullscreen
+    </div>
+
+    <!-- Pointer Lock Indicator -->
+    <div id="pointerLockIndicator" class="pointer-lock-indicator">
+        🖱️ Mouse locked - Click to unlock
+    </div>
+
     <div class="container mx-auto px-4 py-6">
         <!-- Header with Clock and Stopwatch -->
         <div class="flex justify-between items-center mb-8">
@@ -98,7 +196,6 @@
                     <a href="https://instagram.com/yusmafrlnc/" target="_blank" class="credit-link">Instagram</a>
                 </div>
             </div>
-
 
             <div class="text-center">
                 <h3 class="text-lg font-semibold mb-2">Match Duration</h3>
@@ -190,7 +287,7 @@
                     <div class="text-sm">+1 Point Team B</div>
                 </div>
             </div>
-            <div class="grid grid-cols-4 gap-2 text-center text-sm">
+            <div class="grid grid-cols-5 gap-2 text-center text-sm">
                 <div class="bg-yellow-700 p-3 rounded">
                     <div class="font-bold">Middle Click</div>
                     <div>Undo Point</div>
@@ -206,6 +303,10 @@
                 <div class="bg-purple-700 p-3 rounded">
                     <div class="font-bold">Spacebar</div>
                     <div>Start/Pause Timer</div>
+                </div>
+                <div class="bg-indigo-700 p-3 rounded">
+                    <div class="font-bold">F11</div>
+                    <div>Fullscreen</div>
                 </div>
             </div>
         </div>
@@ -230,10 +331,15 @@
                 this.stopwatchTime = 0;
                 this.stopwatchInterval = null;
 
+                // Fullscreen & Pointer Lock
+                this.isFullscreen = false;
+                this.pointerLocked = false;
+
                 this.initializeElements();
                 this.initializeEventListeners();
                 this.initializeClock();
                 this.initializeAudio();
+                this.initializeFullscreen();
                 this.loadGameState();
                 this.updateDisplay();
             }
@@ -259,8 +365,166 @@
                     resetBtn: document.getElementById('resetBtn'),
                     startStopwatch: document.getElementById('startStopwatch'),
                     pauseStopwatch: document.getElementById('pauseStopwatch'),
-                    resetStopwatch: document.getElementById('resetStopwatch')
+                    resetStopwatch: document.getElementById('resetStopwatch'),
+                    fullscreenBtn: document.getElementById('fullscreenBtn'),
+                    fullscreenExitHint: document.getElementById('fullscreenExitHint'),
+                    pointerLockIndicator: document.getElementById('pointerLockIndicator')
                 };
+            }
+
+            initializeFullscreen() {
+                // Fullscreen button click
+                this.elements.fullscreenBtn.addEventListener('click', () => {
+                    this.toggleFullscreen();
+                });
+
+                // Fullscreen change events
+                document.addEventListener('fullscreenchange', () => {
+                    this.handleFullscreenChange();
+                });
+
+                document.addEventListener('webkitfullscreenchange', () => {
+                    this.handleFullscreenChange();
+                });
+
+                document.addEventListener('mozfullscreenchange', () => {
+                    this.handleFullscreenChange();
+                });
+
+                document.addEventListener('MSFullscreenChange', () => {
+                    this.handleFullscreenChange();
+                });
+
+                // Pointer lock events
+                document.addEventListener('pointerlockchange', () => {
+                    this.handlePointerLockChange();
+                });
+
+                document.addEventListener('webkitpointerlockchange', () => {
+                    this.handlePointerLockChange();
+                });
+
+                document.addEventListener('mozpointerlockchange', () => {
+                    this.handlePointerLockChange();
+                });
+
+                // Pointer lock error
+                document.addEventListener('pointerlockerror', () => {
+                    console.log('Pointer lock failed');
+                });
+
+                // Click to unlock pointer in fullscreen
+                document.addEventListener('click', (e) => {
+                    if (this.isFullscreen && this.pointerLocked && e.target === document.body) {
+                        this.exitPointerLock();
+                    }
+                });
+            }
+
+            toggleFullscreen() {
+                if (!this.isFullscreen) {
+                    this.enterFullscreen();
+                } else {
+                    this.exitFullscreen();
+                }
+            }
+
+            enterFullscreen() {
+                const element = document.documentElement;
+
+                if (element.requestFullscreen) {
+                    element.requestFullscreen();
+                } else if (element.webkitRequestFullscreen) {
+                    element.webkitRequestFullscreen();
+                } else if (element.mozRequestFullScreen) {
+                    element.mozRequestFullScreen();
+                } else if (element.msRequestFullscreen) {
+                    element.msRequestFullscreen();
+                }
+            }
+
+            exitFullscreen() {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+
+            handleFullscreenChange() {
+                this.isFullscreen = !!(document.fullscreenElement ||
+                    document.webkitFullscreenElement ||
+                    document.mozFullScreenElement ||
+                    document.msFullscreenElement);
+
+                if (this.isFullscreen) {
+                    document.body.classList.add('fullscreen-mode');
+                    this.elements.fullscreenBtn.innerHTML = `
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
+                        </svg>
+                    `;
+                    this.elements.fullscreenBtn.title = "Exit Fullscreen (ESC)";
+                    this.elements.fullscreenExitHint.classList.add('show');
+
+                    // Request pointer lock after entering fullscreen
+                    setTimeout(() => {
+                        this.requestPointerLock();
+                    }, 100);
+
+                    // Hide hint after 3 seconds
+                    setTimeout(() => {
+                        this.elements.fullscreenExitHint.classList.remove('show');
+                    }, 3000);
+                } else {
+                    document.body.classList.remove('fullscreen-mode');
+                    this.elements.fullscreenBtn.innerHTML = `
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                        </svg>
+                    `;
+                    this.elements.fullscreenBtn.title = "Enter Fullscreen (F11)";
+                    this.elements.fullscreenExitHint.classList.remove('show');
+                    this.exitPointerLock();
+                }
+            }
+
+            requestPointerLock() {
+                const element = document.body;
+
+                if (element.requestPointerLock) {
+                    element.requestPointerLock();
+                } else if (element.webkitRequestPointerLock) {
+                    element.webkitRequestPointerLock();
+                } else if (element.mozRequestPointerLock) {
+                    element.mozRequestPointerLock();
+                }
+            }
+
+            exitPointerLock() {
+                if (document.exitPointerLock) {
+                    document.exitPointerLock();
+                } else if (document.webkitExitPointerLock) {
+                    document.webkitExitPointerLock();
+                } else if (document.mozExitPointerLock) {
+                    document.mozExitPointerLock();
+                }
+            }
+
+            handlePointerLockChange() {
+                this.pointerLocked = !!(document.pointerLockElement ||
+                    document.webkitPointerLockElement ||
+                    document.mozPointerLockElement);
+
+                if (this.pointerLocked) {
+                    this.elements.pointerLockIndicator.classList.add('show');
+                } else {
+                    this.elements.pointerLockIndicator.classList.remove('show');
+                }
             }
 
             initializeEventListeners() {
@@ -308,6 +572,13 @@
                         } else {
                             this.startStopwatch();
                         }
+                    }
+                    if (e.key === 'F11') { // F11 for fullscreen
+                        e.preventDefault();
+                        this.toggleFullscreen();
+                    }
+                    if (e.key === 'Escape' && this.isFullscreen) { // ESC to exit fullscreen
+                        this.exitFullscreen();
                     }
                 });
 
